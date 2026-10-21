@@ -2,5 +2,7 @@
   "name": "SlugGenerator – SEO Slug Generator",
   "description": "Generate clean, readable, SEO-friendly URL slugs from any title or text. Customize, preview, and copy your URL slug instantly with this free online tool.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

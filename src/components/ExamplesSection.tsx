@@ -39,16 +39,43 @@ const EXAMPLES_LIST = [
   },
 ];
 
+import { useToast } from '../context/ToastContext';
+
 export const ExamplesSection: React.FC<ExamplesSectionProps> = ({ onSelectExample }) => {
+  const { showCopySlugToast } = useToast();
+  const [copiedSlug, setCopiedSlug] = React.useState<string | null>(null);
+
+  const handleCopyExample = async (slug: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(slug);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = slug;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedSlug(slug);
+      setTimeout(() => setCopiedSlug(null), 1800);
+      showCopySlugToast(slug);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
-    <section id="examples" className="py-16 sm:py-20 bg-white border-b border-neutral-200 scroll-mt-16">
+    <section id="examples" className="py-16 sm:py-20 bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 scroll-mt-16 transition-colors">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         
         <div className="max-w-3xl mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950 dark:text-white">
             Real-World Slug Generation Examples
           </h2>
-          <p className="mt-3 text-neutral-600 leading-relaxed">
+          <p className="mt-3 text-neutral-600 dark:text-neutral-400 leading-relaxed">
             See how different types of content, multilingual characters, and punctuation are converted into pristine search-engine-ready URLs. Click any example to test it in the generator above.
           </p>
         </div>
@@ -57,28 +84,51 @@ export const ExamplesSection: React.FC<ExamplesSectionProps> = ({ onSelectExampl
           {EXAMPLES_LIST.map((item) => (
             <div
               key={item.title}
-              className="p-5 bg-neutral-50 rounded-xl border border-neutral-200 hover:border-neutral-300 transition-all flex flex-col justify-between group"
+              className="p-5 bg-neutral-50 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-all flex flex-col justify-between group"
             >
               <div>
-                <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
                   {item.category}
                 </div>
-                <h3 className="font-semibold text-neutral-900 text-sm sm:text-base mb-2">
+                <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 text-sm sm:text-base mb-2">
                   "{item.title}"
                 </h3>
-                <div className="p-2.5 bg-white rounded-lg border border-neutral-200 font-mono text-xs text-neutral-900 break-all mb-3 select-all">
-                  /{item.slug}
+                
+                {/* Slug box with in-place copy button */}
+                <div className="p-2 sm:p-2.5 bg-white dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 font-mono text-xs text-neutral-900 dark:text-emerald-400 mb-3 flex items-center justify-between gap-2">
+                  <span className="truncate select-all">/{item.slug}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyExample(item.slug)}
+                    className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer shrink-0"
+                    title="Copy this example slug"
+                  >
+                    {copiedSlug === item.slug ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                 </div>
-                <p className="text-xs text-neutral-500 leading-relaxed">
+
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
                   {item.notes}
                 </p>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-neutral-200/80 flex justify-end">
+              <div className="mt-4 pt-3 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => handleCopyExample(item.slug)}
+                  className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition-colors cursor-pointer"
+                >
+                  {copiedSlug === item.slug ? 'Copied to clipboard' : 'Copy slug'}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => onSelectExample(item.title)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-neutral-700 transition-colors cursor-pointer group-hover:underline underline-offset-4"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-200 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer group-hover:underline underline-offset-4"
                 >
                   <span>Test in Generator</span>
                   <ArrowRight className="w-3.5 h-3.5" />

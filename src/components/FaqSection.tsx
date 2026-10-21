@@ -61,14 +61,14 @@ export const FaqSection: React.FC = () => {
   };
 
   return (
-    <section id="faq" className="py-16 sm:py-20 bg-neutral-50/70 border-b border-neutral-200 scroll-mt-16">
+    <section id="faq" className="py-16 sm:py-20 bg-neutral-50/70 dark:bg-neutral-950/70 border-b border-neutral-200 dark:border-neutral-800 scroll-mt-16 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-950 dark:text-white">
             Frequently Asked Questions
           </h2>
-          <p className="mt-3 text-sm sm:text-base text-neutral-600">
+          <p className="mt-3 text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
             Everything you need to know about URL slugs, search engine optimization, and website address formatting.
           </p>
         </div>
@@ -79,24 +79,24 @@ export const FaqSection: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className="bg-white rounded-xl border border-neutral-200 overflow-hidden transition-colors"
+                className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden transition-colors"
               >
                 <button
                   type="button"
                   onClick={() => toggleItem(item.id)}
                   aria-expanded={isOpen}
-                  className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 font-semibold text-neutral-900 hover:text-neutral-950 cursor-pointer"
+                  className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 font-semibold text-neutral-900 dark:text-neutral-100 hover:text-neutral-950 dark:hover:text-white cursor-pointer"
                 >
                   <span className="text-base">{item.question}</span>
                   <ChevronDown
-                    className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180 text-neutral-900' : ''
+                    className={`w-4 h-4 text-neutral-500 dark:text-neutral-400 shrink-0 transition-transform duration-200 ${
+                      isOpen ? 'rotate-180 text-neutral-900 dark:text-white' : ''
                     }`}
                   />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-neutral-600 text-sm leading-relaxed border-t border-neutral-100">
+                  <div className="px-5 pb-5 pt-1 text-neutral-600 dark:text-neutral-300 text-sm leading-relaxed border-t border-neutral-100 dark:border-neutral-800">
                     <p>{item.answer}</p>
                   </div>
                 )}

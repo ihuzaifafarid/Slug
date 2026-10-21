@@ -107,12 +107,22 @@ export function generateSlug(text: string, options: Partial<SlugOptions> = {}): 
 export interface SlugAnalysis {
   characterCount: number;
   wordCount: number;
+  estimatedReadTimeSeconds: number;
+  readingTimeFormatted: string;
   seoRating: 'optimal' | 'moderate' | 'long' | 'empty';
   seoMessage: string;
+  serpPercent: number;
+  serpVisibility: 'safe' | 'caution' | 'risk';
   hasNumbers: boolean;
   hasUppercase: boolean;
   hasUnderscore: boolean;
+  stopWordsCount: number;
 }
+
+const COMMON_STOP_WORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+  'of', 'with', 'by', 'from', 'as', 'is', 'it', 'this', 'that'
+]);
 
 /**
  * Analyzes a slug against search engine URL best practices.
@@ -124,44 +134,69 @@ export function analyzeSlug(slug: string): SlugAnalysis {
     return {
       characterCount: 0,
       wordCount: 0,
+      estimatedReadTimeSeconds: 0,
+      readingTimeFormatted: '0s',
       seoRating: 'empty',
       seoMessage: 'Enter a title to generate a slug.',
+      serpPercent: 0,
+      serpVisibility: 'safe',
       hasNumbers: false,
       hasUppercase: false,
       hasUnderscore: false,
+      stopWordsCount: 0,
     };
   }
 
   // Estimate words by splitting on hyphens or underscores
-  const words = slug.split(/[-_]+/).filter(Boolean);
+  const words = slug.toLowerCase().split(/[-_]+/).filter(Boolean);
   const wordCount = words.length;
+
+  // Calculate estimated reading / scanning time
+  // Average reading speed is ~220 WPM (3.6 words/sec), but URLs are scanned at ~4 words/sec
+  const seconds = Math.max(0.3, parseFloat((wordCount / 3.6).toFixed(1)));
+  const readingTimeFormatted = seconds < 1 ? '< 1s' : `~${seconds}s`;
+
+  // Detect stop words
+  const stopWordsCount = words.filter((w) => COMMON_STOP_WORDS.has(w)).length;
 
   const hasNumbers = /\d/.test(slug);
   const hasUppercase = /[A-Z]/.test(slug);
   const hasUnderscore = slug.includes('_');
 
+  // SERP budget calculation (60 characters is the standard mobile/desktop display baseline)
+  const serpPercent = Math.min(100, Math.round((charCount / 60) * 100));
+
   let seoRating: 'optimal' | 'moderate' | 'long' = 'optimal';
-  let seoMessage = 'Excellent SEO length (under 60 characters).';
+  let serpVisibility: 'safe' | 'caution' | 'risk' = 'safe';
+  let seoMessage = 'Optimal length (< 60 chars). Fully visible in Google SERP snippets.';
 
   if (charCount > 80) {
     seoRating = 'long';
-    seoMessage = 'Slug is quite long (>80 chars). Google may truncate it in search snippets.';
+    serpVisibility = 'risk';
+    seoMessage = 'High truncation risk. URL exceeds 80 characters and will likely be cut off in search snippets.';
   } else if (charCount > 60) {
     seoRating = 'moderate';
-    seoMessage = 'Good length, but approaching SERP display boundary (60–75 chars).';
-  } else if (wordCount > 8) {
+    serpVisibility = 'caution';
+    seoMessage = 'Approaching 60-char display boundary. May truncate on mobile search viewports.';
+  } else if (wordCount > 7) {
     seoRating = 'moderate';
-    seoMessage = 'Contains many words. Consider condensing to primary keywords.';
+    serpVisibility = 'caution';
+    seoMessage = 'Contains over 7 words. Consider condensing to focus on primary keywords.';
   }
 
   return {
     characterCount: charCount,
     wordCount,
+    estimatedReadTimeSeconds: seconds,
+    readingTimeFormatted,
     seoRating,
     seoMessage,
+    serpPercent,
+    serpVisibility,
     hasNumbers,
     hasUppercase,
     hasUnderscore,
+    stopWordsCount,
   };
 }
 
