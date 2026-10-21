@@ -1,0 +1,77 @@
+import React from 'react';
+import { Link2, Shield } from 'lucide-react';
+import { ModalType } from './InfoModal';
+
+interface FooterProps {
+  onOpenModal: (type: ModalType) => void;
+  onScrollToTop: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenModal, onScrollToTop }) => {
+  return (
+    <footer className="bg-white border-t border-neutral-200 py-12 text-sm text-neutral-600">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-neutral-100">
+          {/* Brand */}
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-md bg-neutral-900 text-white flex items-center justify-center text-xs">
+              <Link2 className="w-3.5 h-3.5" />
+            </span>
+            <span className="font-bold text-neutral-900 text-base">SlugGenerator</span>
+            <span className="text-neutral-400">·</span>
+            <span className="text-xs text-neutral-500">Free SEO URL Generator Tool</span>
+          </div>
+
+          {/* Links: Home, About, Privacy Policy, Contact */}
+          <nav className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm font-medium">
+            <button
+              type="button"
+              onClick={onScrollToTop}
+              className="text-neutral-600 hover:text-neutral-950 transition-colors cursor-pointer"
+            >
+              Home
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenModal('about')}
+              className="text-neutral-600 hover:text-neutral-950 transition-colors cursor-pointer"
+            >
+              About
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenModal('privacy')}
+              className="text-neutral-600 hover:text-neutral-950 transition-colors cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenModal('contact')}
+              className="text-neutral-600 hover:text-neutral-950 transition-colors cursor-pointer"
+            >
+              Contact
+            </button>
+          </nav>
+        </div>
+
+        {/* Bottom Bar: Privacy & Copyright */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
+          <div className="flex items-center gap-2">
+            <Shield className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Client-side only. Entered titles and generated slugs are never sent to a server.</span>
+          </div>
+
+          <div>
+            &copy; {new Date().getFullYear()} SlugGenerator. All rights reserved.
+          </div>
+        </div>
+
+      </div>
+    </footer>
+  );
+};
