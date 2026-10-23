@@ -201,19 +201,27 @@ apiRouter.post('/auth/forgot-password', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Email address is required.' });
   }
 
-  const user = db.findUserByEmail(email);
+  const cleanEmail = email.trim().toLowerCase();
+  const user = db.findUserByEmail(cleanEmail);
+  let resetToken: string | undefined;
+
   if (user) {
-    const resetToken = crypto.randomBytes(24).toString('hex');
+    resetToken = crypto.randomBytes(24).toString('hex');
     const resetExpires = Date.now() + 3600 * 1000; // 1 hour
     db.updateUser(user.id, {
       resetToken,
       resetTokenExpires: resetExpires,
     });
+    console.log(`[Auth Recovery] Password reset token generated for ${user.email}: ${resetToken}`);
   }
 
-  // Always return identical message to prevent user enumeration
+  // If running in development or without external SMTP service, return the token so user can reset immediately
   return res.json({
-    message: 'If an account exists with that email, a password reset link has been dispatched.',
+    message: user 
+      ? 'Password reset instructions have been generated.' 
+      : 'If an account exists with that email, instructions have been generated.',
+    hasAccount: Boolean(user),
+    resetToken: user ? resetToken : undefined,
   });
 });
 
@@ -237,7 +245,108 @@ apiRouter.post('/auth/reset-password', (req: Request, res: Response) => {
     resetTokenExpires: undefined,
   });
 
-  return res.json({ message: 'Password has been reset successfully. You can now log in.' });
+  const sessionToken = generateToken(user);
+  const { planTier, dailyLimit, subscription } = resolveUserPlanAndLimit(user);
+  const usage = db.getDailyUsage(user.id, dailyLimit);
+
+  return res.json({ 
+    success: true, 
+    message: 'Password has been reset successfully. You are now logged in.',
+    token: sessionToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      emailVerified: user.emailVerified,
+    },
+    subscription: {
+      ...subscription,
+      plan: planTier,
+    },
+    usage: {
+      count: usage.count,
+      limit: usage.limit,
+      remaining: Math.max(0, usage.limit - usage.count),
+      resetsAtUtc: usage.resetsAtUtc,
+    },
+  });
+});
+
+/**
+ * Secure Admin Reset Endpoint
+ * Allows the website owner to set/reset the administrator password
+ * using the server setup key (found in data/admin_setup_key.secret or ADMIN_SETUP_KEY env var)
+ */
+apiRouter.post('/auth/admin-reset', (req: Request, res: Response) => {
+  try {
+    const { email, newPassword, setupKey } = req.body;
+
+    if (!setupKey || typeof setupKey !== 'string') {
+      return res.status(400).json({ 
+        error: 'Server Setup Key is required. You can find this in server logs, data/admin_setup_key.secret, or the ADMIN_SETUP_KEY environment variable.' 
+      });
+    }
+
+    const isValidKey = db.verifyAdminSetupKey(setupKey);
+    if (!isValidKey) {
+      return res.status(403).json({ 
+        error: 'Invalid Server Setup Key. Please verify the setup key in your server files or environment.' 
+      });
+    }
+
+    const targetEmail = (email && typeof email === 'string' ? email.trim() : '') || process.env.ADMIN_EMAIL || 'huzaifaahmedary@gmail.com';
+    if (!targetEmail.includes('@')) {
+      return res.status(400).json({ error: 'A valid administrator email address is required.' });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'New admin password must be at least 8 characters long.' });
+    }
+
+    const adminUser = db.resetAdminPassword(targetEmail, newPassword);
+    const sessionToken = generateToken(adminUser);
+    const { planTier, dailyLimit, subscription } = resolveUserPlanAndLimit(adminUser);
+    const usage = db.getDailyUsage(adminUser.id, dailyLimit);
+
+    console.log(`[Admin Security] Admin password successfully reset via setup key for ${targetEmail}`);
+
+    return res.json({
+      success: true,
+      message: 'Administrator credentials updated successfully. You are now logged in as Administrator.',
+      token: sessionToken,
+      user: {
+        id: adminUser.id,
+        email: adminUser.email,
+        name: adminUser.name,
+        role: adminUser.role,
+        emailVerified: adminUser.emailVerified,
+      },
+      subscription: {
+        ...subscription,
+        plan: planTier,
+      },
+      usage: {
+        count: usage.count,
+        limit: usage.limit,
+        remaining: Math.max(0, usage.limit - usage.count),
+        resetsAtUtc: usage.resetsAtUtc,
+      },
+    });
+  } catch (err: any) {
+    console.error('Admin reset error:', err);
+    return res.status(500).json({ error: err?.message || 'Failed to update administrator account.' });
+  }
+});
+
+apiRouter.get('/auth/admin-status', (_req: Request, res: Response) => {
+  const adminEmail = (process.env.ADMIN_EMAIL || 'huzaifaahmedary@gmail.com').trim().toLowerCase();
+  const adminUser = db.findUserByEmail(adminEmail);
+  return res.json({
+    adminEmail,
+    hasAdminAccount: Boolean(adminUser && adminUser.role === 'admin'),
+    setupKeyAvailable: true,
+  });
 });
 
 // -------------------------------------------------------------

@@ -9,6 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
+    "setup-admin": "tsx server/scripts/setup-admin.ts",
+    "reset-admin": "tsx server/scripts/setup-admin.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

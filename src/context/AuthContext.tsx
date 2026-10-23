@@ -26,6 +26,8 @@ export interface DailyQuota {
   resetsAtUtc: string;
 }
 
+export type AuthModalMode = 'login' | 'register' | 'forgot' | 'reset' | 'admin-recovery';
+
 interface AuthContextType {
   user: UserProfile | null;
   subscription: UserSubscription | null;
@@ -39,9 +41,10 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<void>;
   updateQuota: (newQuota: DailyQuota) => void;
-  openAuthModal: (mode?: 'login' | 'register' | 'forgot') => void;
+  setSessionFromAuth: (token: string, user: UserProfile, subscription: UserSubscription, usage?: DailyQuota) => void;
+  openAuthModal: (mode?: AuthModalMode) => void;
   closeAuthModal: () => void;
-  authModalState: { isOpen: boolean; mode: 'login' | 'register' | 'forgot' };
+  authModalState: { isOpen: boolean; mode: AuthModalMode };
   openDashboard: () => void;
   closeDashboard: () => void;
   isDashboardOpen: boolean;
@@ -78,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals state
-  const [authModalState, setAuthModalState] = useState<{ isOpen: boolean; mode: 'login' | 'register' | 'forgot' }>({
+  const [authModalState, setAuthModalState] = useState<{ isOpen: boolean; mode: AuthModalMode }>({
     isOpen: false,
     mode: 'login',
   });
@@ -95,7 +98,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     missingKeys: [],
   });
 
-  const openAuthModal = (mode: 'login' | 'register' | 'forgot' = 'login') => {
+  const setSessionFromAuth = (newToken: string, newUser: UserProfile, newSubscription: UserSubscription, newQuota?: DailyQuota) => {
+    localStorage.setItem(TOKEN_KEY, newToken);
+    setToken(newToken);
+    setUser(newUser);
+    setSubscription(newSubscription);
+    if (newQuota) setQuota(newQuota);
+    closeAuthModal();
+  };
+
+  const openAuthModal = (mode: AuthModalMode = 'login') => {
     setAuthModalState({ isOpen: true, mode });
   };
   const closeAuthModal = () => {
@@ -291,6 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         refreshUser,
         updateQuota,
+        setSessionFromAuth,
         openAuthModal,
         closeAuthModal,
         authModalState,

@@ -3,12 +3,12 @@
     {
       "id": "usr_admin_b5c95ea1ccfb",
       "email": "huzaifaahmedary@gmail.com",
-      "passwordHash": "$2b$10$c6ubkd54ri/MsK8NeZfJx.q3MUNQ7DhqSfOo2hL0LFJIeZo7HIV8S",
+      "passwordHash": "$2b$10$8WbE3aLi73Iwo5b47xGuiOrRnUXlIkmefM0xwTjp6U3LGuL3itfbu",
       "name": "Administrator",
       "role": "admin",
       "emailVerified": true,
       "createdAt": "2026-10-23T13:15:43.911Z",
-      "updatedAt": "2026-10-23T13:15:43.912Z"
+      "updatedAt": "2026-10-23T15:15:32.445Z"
     },
     {
       "email": "checkout_test_1792763557336@example.com",
@@ -63,9 +63,9 @@
       "provider": "manual",
       "customerId": "admin_sys",
       "subscriptionId": "sub_lifetime_admin",
-      "currentPeriodEnd": "2126-09-29T13:15:43.913Z",
+      "currentPeriodEnd": "2126-09-29T15:15:32.446Z",
       "createdAt": "2026-10-23T13:15:43.913Z",
-      "updatedAt": "2026-10-23T13:15:43.913Z"
+      "updatedAt": "2026-10-23T15:15:32.446Z"
     },
     {
       "id": "sub_1765dbc09535d1a3",

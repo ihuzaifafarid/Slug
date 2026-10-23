@@ -182,17 +182,19 @@ class Database {
   }
 
   private seedDefaultAdmin() {
-    const adminEmail = process.env.ADMIN_EMAIL || 'huzaifaahmedary@gmail.com';
-    const existing = this.data.users.find(u => u.email.toLowerCase() === adminEmail.toLowerCase());
-    
+    const adminEmail = (process.env.ADMIN_EMAIL || 'huzaifaahmedary@gmail.com').trim().toLowerCase();
+    let existing = this.data.users.find(u => u.email.toLowerCase() === adminEmail);
+    const envResetPassword = process.env.ADMIN_RESET_PASSWORD || process.env.ADMIN_PASSWORD;
+
     if (!existing) {
       const adminId = 'usr_admin_' + crypto.randomBytes(6).toString('hex');
       const salt = bcrypt.genSaltSync(10);
-      const passwordHash = bcrypt.hashSync(process.env.ADMIN_INITIAL_PASSWORD || 'Admin@Slugify2026', salt);
+      const initialPass = envResetPassword || process.env.ADMIN_INITIAL_PASSWORD || 'Admin@Slugify2026';
+      const passwordHash = bcrypt.hashSync(initialPass, salt);
       
       const adminUser: User = {
         id: adminId,
-        email: adminEmail.toLowerCase(),
+        email: adminEmail,
         passwordHash,
         name: 'Administrator',
         role: 'admin',
@@ -218,10 +220,135 @@ class Database {
 
       this.persist();
       console.log(`[DB] Seeded initial admin account: ${adminEmail} (Role: admin, Plan: premium)`);
-    } else if (existing.role !== 'admin') {
-      existing.role = 'admin';
-      this.persist();
+    } else {
+      let changed = false;
+      if (existing.role !== 'admin') {
+        existing.role = 'admin';
+        changed = true;
+      }
+      if (!existing.emailVerified) {
+        existing.emailVerified = true;
+        changed = true;
+      }
+
+      // If owner provided ADMIN_RESET_PASSWORD or ADMIN_PASSWORD via environment, apply it immediately
+      if (envResetPassword) {
+        const isAlreadyMatch = bcrypt.compareSync(envResetPassword, existing.passwordHash);
+        if (!isAlreadyMatch) {
+          const salt = bcrypt.genSaltSync(10);
+          existing.passwordHash = bcrypt.hashSync(envResetPassword, salt);
+          existing.updatedAt = new Date().toISOString();
+          changed = true;
+          console.log(`[DB] Admin password updated from environment variable for ${adminEmail}`);
+        }
+      }
+
+      // Ensure lifetime Premium subscription exists
+      const existingSub = this.data.subscriptions.find(s => s.userId === existing!.id);
+      if (!existingSub) {
+        this.data.subscriptions.push({
+          id: 'sub_admin_' + crypto.randomBytes(6).toString('hex'),
+          userId: existing.id,
+          plan: 'premium',
+          status: 'active',
+          provider: 'manual',
+          customerId: 'admin_sys',
+          subscriptionId: 'sub_lifetime_admin',
+          currentPeriodEnd: new Date(Date.now() + 100 * 365 * 24 * 3600 * 1000).toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        changed = true;
+      } else if (existingSub.plan !== 'premium' || existingSub.status !== 'active') {
+        existingSub.plan = 'premium';
+        existingSub.status = 'active';
+        changed = true;
+      }
+
+      if (changed) {
+        this.persist();
+      }
     }
+  }
+
+  /**
+   * Reset or create the administrator account with securely hashed password
+   */
+  public resetAdminPassword(email: string, plainPassword: string): User {
+    if (!plainPassword || typeof plainPassword !== 'string' || plainPassword.length < 8) {
+      throw new Error('Admin password must be at least 8 characters long for security.');
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    let user = this.findUserByEmail(cleanEmail);
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(plainPassword, salt);
+    const now = new Date().toISOString();
+
+    if (!user) {
+      const adminId = 'usr_admin_' + crypto.randomBytes(6).toString('hex');
+      user = {
+        id: adminId,
+        email: cleanEmail,
+        passwordHash,
+        name: 'Administrator',
+        role: 'admin',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.data.users.push(user);
+    } else {
+      user.passwordHash = passwordHash;
+      user.role = 'admin';
+      user.emailVerified = true;
+      user.resetToken = undefined;
+      user.resetTokenExpires = undefined;
+      user.updatedAt = now;
+    }
+
+    // Ensure lifetime Premium subscription
+    this.setSubscription(user.id, 'premium', 'manual', {
+      customerId: 'admin_sys',
+      subscriptionId: 'sub_lifetime_admin',
+      currentPeriodEnd: new Date(Date.now() + 100 * 365 * 24 * 3600 * 1000).toISOString(),
+    });
+
+    this.persist();
+    return user;
+  }
+
+  /**
+   * Secure Admin Setup / Recovery Key for web-based first-time recovery
+   */
+  public getAdminSetupKey(): string {
+    if (process.env.ADMIN_SETUP_KEY && process.env.ADMIN_SETUP_KEY.trim()) {
+      return process.env.ADMIN_SETUP_KEY.trim();
+    }
+    const keyFile = path.join(DB_DIR, 'admin_setup_key.secret');
+    if (fs.existsSync(keyFile)) {
+      try {
+        const key = fs.readFileSync(keyFile, 'utf-8').trim();
+        if (key.length >= 16) return key;
+      } catch {}
+    }
+    const generated = 'adm_key_' + crypto.randomBytes(16).toString('hex');
+    try {
+      fs.writeFileSync(keyFile, generated, { encoding: 'utf-8', mode: 0o600 });
+      console.log(`[Admin Security] Generated server setup key in data/admin_setup_key.secret: ${generated}`);
+    } catch {}
+    return generated;
+  }
+
+  /**
+   * Verify an admin setup key using timing-safe comparison
+   */
+  public verifyAdminSetupKey(candidateKey: string): boolean {
+    if (!candidateKey || typeof candidateKey !== 'string') return false;
+    const actualKey = this.getAdminSetupKey();
+    const candidateBuf = Buffer.from(candidateKey.trim());
+    const actualBuf = Buffer.from(actualKey.trim());
+    if (candidateBuf.length !== actualBuf.length) return false;
+    return crypto.timingSafeEqual(candidateBuf, actualBuf);
   }
 
   // --- Users Operations ---

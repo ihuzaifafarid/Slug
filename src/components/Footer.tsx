@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link2, Shield } from 'lucide-react';
 import { ModalType } from './InfoModal';
+import { useAuth } from '../context/AuthContext';
 
 interface FooterProps {
   onOpenModal: (type: ModalType) => void;
@@ -8,6 +9,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenModal, onScrollToTop }) => {
+  const { isAdmin, openAdmin, openAuthModal } = useAuth();
   return (
     <footer className="bg-white dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-800 py-12 text-sm text-neutral-600 dark:text-neutral-400 transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -55,6 +57,21 @@ export const Footer: React.FC<FooterProps> = ({ onOpenModal, onScrollToTop }) =>
               className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-white transition-colors cursor-pointer"
             >
               Contact
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (isAdmin) {
+                  openAdmin();
+                } else {
+                  openAuthModal('admin-recovery');
+                }
+              }}
+              className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Shield className="w-3 h-3" />
+              <span>Admin Portal</span>
             </button>
           </nav>
         </div>
