@@ -211,3 +211,110 @@ export function sanitizeDomain(domain: string): string {
   clean = clean.replace(/\/.*$/, '');
   return clean || 'example.com';
 }
+
+export interface SlugSuggestion {
+  slug: string;
+  label: string;
+  rationale: string;
+}
+
+/**
+ * Generates 3 smart heuristic SEO slug suggestions when Gemini is offline or as a fallback.
+ */
+export function generateHeuristicSuggestions(title: string, separator: '-' | '_' = '-'): SlugSuggestion[] {
+  if (!title || !title.trim()) {
+    return [];
+  }
+
+  const rawSlug = generateSlug(title, { separator, lowercase: true, removeSpecialChars: true });
+  const words = rawSlug.split(separator === '-' ? /-/ : /_/).filter(Boolean);
+
+  if (words.length === 0) {
+    return [];
+  }
+
+  const suggestions: SlugSuggestion[] = [];
+
+  // 1. Keyword Core: Remove common stop words
+  const nonStopWords = words.filter((w) => !COMMON_STOP_WORDS.has(w));
+  const coreWords = nonStopWords.length >= 2 ? nonStopWords : words;
+  const coreSlug = coreWords.slice(0, 5).join(separator);
+
+  suggestions.push({
+    slug: coreSlug,
+    label: 'Keyword Core',
+    rationale: 'Strips filler stop-words to maximize keyword density for search engines.',
+  });
+
+  // 2. Short & Punchy: 2-3 most essential terms (<= 35 chars)
+  const punchyWords = (nonStopWords.length > 2 ? nonStopWords : words).slice(0, 3);
+  const punchySlug = punchyWords.join(separator);
+
+  suggestions.push({
+    slug: punchySlug !== coreSlug ? punchySlug : (words.slice(0, 2).join(separator) || coreSlug),
+    label: 'Short & Punchy',
+    rationale: 'Compact, memorable URL that prevents Google SERP snippet truncation.',
+  });
+
+  // 3. Search Intent Focus: Evergreen or Intent-driven
+  // If words contain year like 2024, 2025, 2026, 2027, create an evergreen version without year
+  const withoutYears = coreWords.filter((w) => !/^\d{4}$/.test(w));
+  let intentSlug = '';
+  let intentLabel = 'Evergreen Authority';
+  let intentRationale = 'Omits specific publication years so URLs never expire or need redirects.';
+
+  if (withoutYears.length > 0 && withoutYears.length < coreWords.length) {
+    intentSlug = withoutYears.join(separator);
+  } else if (!coreWords.includes('best') && !coreWords.includes('guide') && !coreWords.includes('tips')) {
+    intentSlug = ['guide', ...coreWords.slice(0, 3)].join(separator);
+    intentLabel = 'Resource / Guide Intent';
+    intentRationale = 'Prefixes with high-intent taxonomy for pillar content and knowledge hubs.';
+  } else {
+    // Intent focused
+    intentSlug = coreWords.slice(0, 4).join(separator);
+    intentLabel = 'High Intent';
+    intentRationale = 'Prioritizes primary commercial and informational search query terms.';
+  }
+
+  // Ensure 3 unique slugs
+  if (intentSlug === coreSlug || intentSlug === punchySlug) {
+    intentSlug = words.slice(0, 4).join(separator);
+    intentLabel = 'Exact Clean';
+    intentRationale = 'Preserves natural title phrasing while ensuring 100% web-safe characters.';
+  }
+
+  suggestions.push({
+    slug: intentSlug,
+    label: intentLabel,
+    rationale: intentRationale,
+  });
+
+  // Deduplicate in case words were very few (e.g. single word title)
+  const uniqueMap = new Map<string, SlugSuggestion>();
+  suggestions.forEach((item) => {
+    if (!uniqueMap.has(item.slug)) {
+      uniqueMap.set(item.slug, item);
+    }
+  });
+
+  // If fewer than 3 unique, pad with simple length or separator variants
+  if (uniqueMap.size < 3) {
+    if (!uniqueMap.has(rawSlug)) {
+      uniqueMap.set(rawSlug, {
+        slug: rawSlug,
+        label: 'Direct Safe',
+        rationale: 'Clean direct transliteration adhering to standard URL safety specs.',
+      });
+    }
+    const minimal = words.slice(0, 1).join(separator);
+    if (minimal && !uniqueMap.has(minimal)) {
+      uniqueMap.set(minimal, {
+        slug: minimal,
+        label: 'Ultra Minimal',
+        rationale: 'Single root keyword for top-level category or index landing pages.',
+      });
+    }
+  }
+
+  return Array.from(uniqueMap.values()).slice(0, 3);
+}

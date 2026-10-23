@@ -13,7 +13,9 @@ import {
   History,
   Clock,
   ArrowUpRight,
-  Download
+  Download,
+  Loader2,
+  X
 } from 'lucide-react';
 import { 
   generateSlug, 
@@ -21,7 +23,9 @@ import {
   sanitizeDomain, 
   DEFAULT_SLUG_OPTIONS, 
   SlugOptions,
-  SlugAnalysis 
+  SlugAnalysis,
+  SlugSuggestion,
+  generateHeuristicSuggestions
 } from '../utils/slugify';
 import { SlugStatsWidget } from './SlugStatsWidget';
 import { useToast } from '../context/ToastContext';
@@ -57,6 +61,13 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
   const [inputText, setInputText] = useState('Best Running Shoes for Beginners in 2026');
   const [manualSlug, setManualSlug] = useState('');
   const [isManuallyEdited, setIsManuallyEdited] = useState(false);
+
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<SlugSuggestion[] | null>(null);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showSuggestionsPanel, setShowSuggestionsPanel] = useState(false);
+  const [appliedSuggestionSlug, setAppliedSuggestionSlug] = useState<string | null>(null);
+  const [suggestionSource, setSuggestionSource] = useState<'gemini' | 'heuristic' | null>(null);
 
   // Tactile button copy state indicators
   const [copiedSlugState, setCopiedSlugState] = useState(false);
@@ -304,6 +315,77 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
       saveToHistory(inputText, regenerated);
     }
     showToast({ title: 'Regenerated fresh slug', snippet: `/${regenerated}`, type: 'success', actionType: 'slug' });
+  };
+
+  // Get 3 alternative, more optimized slugs
+  const handleGetSuggestions = async () => {
+    const trimmedTitle = inputText.trim();
+    if (!trimmedTitle) {
+      showToast({
+        title: 'Title is empty',
+        snippet: 'Enter a title or text first to generate optimized suggestions',
+        type: 'info',
+      });
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    setShowSuggestionsPanel(true);
+    setAppliedSuggestionSlug(null);
+
+    try {
+      const res = await fetch('/api/suggest-slugs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: trimmedTitle,
+          separator,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+          setSuggestions(data.suggestions);
+          setSuggestionSource(data.source === 'gemini' ? 'gemini' : 'heuristic');
+          showToast({
+            title: '3 Slug Suggestions Ready',
+            snippet: data.source === 'gemini' ? 'AI-optimized for search engines' : 'Heuristic SEO alternatives',
+            type: 'success',
+            actionType: 'slug',
+          });
+          return;
+        }
+      }
+      throw new Error('Fallback to heuristic');
+    } catch {
+      // Immediate resilient heuristic fallback
+      const fallback = generateHeuristicSuggestions(trimmedTitle, separator);
+      setSuggestions(fallback);
+      setSuggestionSource('heuristic');
+      showToast({
+        title: '3 Slug Suggestions Ready',
+        snippet: 'Heuristic-optimized SEO alternatives',
+        type: 'success',
+        actionType: 'slug',
+      });
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  // 1-Click apply selected suggestion to active slug
+  const handleApplySuggestion = (suggestion: SlugSuggestion) => {
+    setManualSlug(suggestion.slug);
+    setIsManuallyEdited(true);
+    setAppliedSuggestionSlug(suggestion.slug);
+    saveToHistory(inputText, suggestion.slug);
+    showToast({
+      title: 'Applied suggested slug',
+      snippet: `/${suggestion.slug}`,
+      type: 'success',
+      actionType: 'slug',
+    });
   };
 
   const handlePresetClick = (preset: string) => {
@@ -789,6 +871,17 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
                       (Manually edited)
                     </span>
                   )}
+                  {!showSuggestionsPanel && (
+                    <button
+                      type="button"
+                      onClick={handleGetSuggestions}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors ml-1 cursor-pointer"
+                      title="Propose 3 alternative optimized slugs"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Get Suggestions</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Analysis indicators */}
@@ -869,6 +962,27 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
                 )}
               </button>
 
+              {/* Get Suggestions: Propose 3 Alternative Slugs */}
+              <button
+                type="button"
+                onClick={handleGetSuggestions}
+                disabled={isLoadingSuggestions}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 hover:bg-indigo-100/90 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-sm font-semibold rounded-xl transition-all duration-150 cursor-pointer active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
+                title="Propose 3 alternative, more optimized slugs for your title"
+              >
+                {isLoadingSuggestions ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Get Suggestions</span>
+                  </>
+                )}
+              </button>
+
               {/* Secondary: Generate Again */}
               <button
                 type="button"
@@ -890,6 +1004,151 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
                 <span>Clear</span>
               </button>
             </div>
+
+            {/* Suggestions Panel (3 alternative, more optimized slugs) */}
+            {showSuggestionsPanel && (
+              <div className="mt-5 p-4 sm:p-5 bg-neutral-50/80 dark:bg-neutral-950/80 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm transition-all animate-in fade-in duration-200">
+                <div className="flex items-center justify-between pb-3.5 border-b border-neutral-200/80 dark:border-neutral-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-lg">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                        <span>Optimized Slug Alternatives</span>
+                        {suggestionSource === 'gemini' && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            Gemini AI
+                          </span>
+                        )}
+                        {suggestionSource === 'heuristic' && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700">
+                            SEO Rules
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                        Choose the best variation tailored for keywords, brevity, or search intent.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGetSuggestions}
+                      disabled={isLoadingSuggestions}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
+                      title="Regenerate suggestions"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${isLoadingSuggestions ? 'animate-spin' : ''}`} />
+                      <span className="hidden sm:inline">Refresh</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuggestionsPanel(false)}
+                      className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 rounded-md transition-colors cursor-pointer"
+                      title="Dismiss suggestions"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Suggestions Loading State */}
+                {isLoadingSuggestions ? (
+                  <div className="py-8 text-center space-y-3">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400" />
+                    <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                      Analyzing title and formulating 3 optimized SEO slug variations...
+                    </p>
+                  </div>
+                ) : suggestions && suggestions.length > 0 ? (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    {suggestions.map((item, idx) => {
+                      const isSelected = manualSlug === item.slug || appliedSuggestionSlug === item.slug;
+                      const wordCount = item.slug.split(/[-_]+/).filter(Boolean).length;
+                      const charCount = item.slug.length;
+
+                      return (
+                        <div
+                          key={item.slug + idx}
+                          className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
+                            isSelected
+                              ? 'bg-white dark:bg-neutral-900 border-indigo-600 dark:border-indigo-500 ring-2 ring-indigo-500/20 shadow-sm'
+                              : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
+                          }`}
+                        >
+                          <div>
+                            {/* Card Header: Label & Stats */}
+                            <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                idx === 0
+                                  ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                  : idx === 1
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                  : 'bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                              }`}>
+                                {item.label}
+                              </span>
+                              <span className="text-[10px] font-mono font-medium text-neutral-500 dark:text-neutral-400">
+                                {charCount} chars · {wordCount} w
+                              </span>
+                            </div>
+
+                            {/* Slug Box */}
+                            <div className="p-2.5 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200/80 dark:border-neutral-800/80 font-mono text-xs font-semibold text-neutral-900 dark:text-neutral-100 break-all select-all flex items-center justify-between gap-2">
+                              <span className="truncate">/{item.slug}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  copyText(item.slug);
+                                  showCopySlugToast(item.slug);
+                                }}
+                                className="p-1 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/50 dark:hover:bg-neutral-800 rounded transition-colors shrink-0 cursor-pointer"
+                                title="Copy this suggested slug"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            {/* Rationale */}
+                            <p className="mt-2.5 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                              {item.rationale}
+                            </p>
+                          </div>
+
+                          {/* 1-Click Apply Button */}
+                          <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80">
+                            <button
+                              type="button"
+                              onClick={() => handleApplySuggestion(item)}
+                              className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs'
+                                  : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 active:scale-[0.98]'
+                              }`}
+                            >
+                              {isSelected ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-white" />
+                                  <span>Applied to Slug</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>Use This Slug</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
 
           </div>
         ) : (
