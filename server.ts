@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 
+import { apiRouter } from './server/api';
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +15,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
+
+// Mount SaaS API Router (Auth, Server-enforced Quotas, Billing, Analytics, Admin)
+app.use('/api', apiRouter);
 
 // Initialize GoogleGenAI server client
 const ai = new GoogleGenAI({

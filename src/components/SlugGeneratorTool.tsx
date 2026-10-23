@@ -15,7 +15,9 @@ import {
   ArrowUpRight,
   Download,
   Loader2,
-  X
+  X,
+  Zap,
+  Lock
 } from 'lucide-react';
 import { 
   generateSlug, 
@@ -29,6 +31,7 @@ import {
 } from '../utils/slugify';
 import { SlugStatsWidget } from './SlugStatsWidget';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 export interface HistoryItem {
   id: string;
@@ -56,11 +59,16 @@ const MAX_HISTORY_ITEMS = 5;
 
 export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, externalInput }) => {
   const { showToast, showCopySlugToast, showCopyUrlToast } = useToast();
+  const { user, subscription, quota, updateQuota, token, upgradeToPlan, openAuthModal } = useAuth();
 
   // Input state
   const [inputText, setInputText] = useState('Best Running Shoes for Beginners in 2026');
   const [manualSlug, setManualSlug] = useState('');
   const [isManuallyEdited, setIsManuallyEdited] = useState(false);
+
+  // Quota & Limit State
+  const [isQuotaExhausted, setIsQuotaExhausted] = useState(false);
+  const [quotaExhaustedDetails, setQuotaExhaustedDetails] = useState<{ count: number; limit: number; resetsAt: string } | null>(null);
 
   // Suggestions state
   const [suggestions, setSuggestions] = useState<SlugSuggestion[] | null>(null);
@@ -176,6 +184,55 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
     preserveUnicode: true,
   };
 
+  // Server-Enforced Slug Generation with atomic quota reservation
+  const syncGenerateSlugsWithServer = async (titles: string[]) => {
+    const validTitles = titles.map(t => t.trim()).filter(Boolean);
+    if (validTitles.length === 0) return null;
+
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/generate-slugs', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          titles: validTitles,
+          options: {
+            separator,
+            lowercase,
+            removeSpecialChars,
+            maxLength: isLengthRestricted ? maxLength : undefined,
+          },
+        }),
+      });
+
+      if (res.status === 429) {
+        const errData = await res.json();
+        setIsQuotaExhausted(true);
+        if (errData.quota) {
+          updateQuota(errData.quota);
+          setQuotaExhaustedDetails({
+            count: errData.quota.count,
+            limit: errData.quota.limit,
+            resetsAt: errData.quota.resetsAtUtc,
+          });
+        }
+        return null;
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.quota) updateQuota(data.quota);
+        setIsQuotaExhausted(false);
+        return data;
+      }
+    } catch {
+      // Offline fallback
+    }
+    return null;
+  };
+
   // Re-generate slug when input or settings change, unless manually modified
   useEffect(() => {
     if (!isManuallyEdited) {
@@ -183,6 +240,15 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
       setManualSlug(generated);
     }
   }, [inputText, separator, lowercase, removeSpecialChars, maxLength, isLengthRestricted, isManuallyEdited]);
+
+  // Debounced server quota synchronization (fires 800ms after user finishes editing title)
+  useEffect(() => {
+    if (!inputText || inputText.trim().length < 2 || isQuotaExhausted) return;
+    const timer = setTimeout(() => {
+      syncGenerateSlugsWithServer([inputText]);
+    }, 850);
+    return () => clearTimeout(timer);
+  }, [inputText, separator, lowercase, removeSpecialChars, maxLength, isLengthRestricted]);
 
   // Update batch mode output
   useEffect(() => {
@@ -461,6 +527,36 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
 
   return (
     <div id="generator" className="w-full max-w-4xl mx-auto scroll-mt-24">
+
+      {/* Server-Enforced Daily Quota Status Bar */}
+      <div className="mb-4 px-4 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs transition-colors">
+        <div className="flex items-center gap-2">
+          <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+            {quota.count.toLocaleString()} of {quota.limit.toLocaleString()} generations used today
+          </span>
+          <span className="text-neutral-300 dark:text-neutral-700">·</span>
+          <span className="text-neutral-500 dark:text-neutral-400">
+            {quota.remaining.toLocaleString()} remaining (Resets at 00:00 UTC)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {subscription?.plan !== 'premium' ? (
+            <a
+              href="#pricing"
+              className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline"
+            >
+              <span>{subscription?.plan === 'pro' ? 'Upgrade to Premium (10k/day)' : 'Upgrade to Pro (1k/day)'}</span>
+              <ArrowUpRight className="w-3 h-3" />
+            </a>
+          ) : (
+            <span className="font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <span>Premium Tier Active</span>
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* Main Tool Container */}
       <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm p-6 sm:p-8 transition-colors">
@@ -1154,6 +1250,31 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
         ) : (
           /* BATCH MODE */
           <div className="mt-6 space-y-6">
+
+            {/* Free Tier Batch Banner */}
+            {(!subscription || subscription.plan === 'free') && (
+              <div className="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-neutral-900 dark:text-neutral-100 block">
+                      Bulk Generation &amp; CSV Export is a Pro Feature
+                    </span>
+                    <span className="text-neutral-600 dark:text-neutral-400">
+                      Generate up to 100 or 1,000 URLs at once for catalog migrations and 301 redirects.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => upgradeToPlan('pro')}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shrink-0 cursor-pointer shadow-xs whitespace-nowrap"
+                >
+                  Upgrade to Pro ($5/mo)
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Batch Input */}
               <div>
@@ -1199,7 +1320,16 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={handleCopyBatch}
+                onClick={async () => {
+                  const lines = batchInput.split('\n').filter(Boolean);
+                  if (lines.length === 0) return;
+                  if (!subscription || subscription.plan === 'free') {
+                    setIsQuotaExhausted(true);
+                    return;
+                  }
+                  await syncGenerateSlugsWithServer(lines);
+                  handleCopyBatch();
+                }}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 text-sm font-semibold rounded-xl transition-colors cursor-pointer active:scale-[0.98]"
               >
                 <Copy className="w-4 h-4" />
@@ -1208,7 +1338,11 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  const lines = batchInput.split('\n').filter(Boolean);
+                  if (lines.length > 0 && subscription && subscription.plan !== 'free') {
+                    await syncGenerateSlugsWithServer(lines);
+                  }
                   const csvContent = "data:text/csv;charset=utf-8," 
                     + "Title,Slug,Full_URL\n" 
                     + batchInput.split('\n').map((title, i) => {
@@ -1247,6 +1381,66 @@ export const SlugGeneratorTool: React.FC<SlugGeneratorToolProps> = ({ inputRef, 
         )}
 
       </div>
+
+      {/* Quota Exhausted Modal Alert */}
+      {isQuotaExhausted && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div 
+            className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl p-6 relative transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIsQuotaExhausted(false)}
+              className="absolute top-4 right-4 p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="text-center space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                Daily Generation Limit Reached
+              </h3>
+
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-sm mx-auto leading-relaxed">
+                You have reached your daily quota of <strong className="text-neutral-900 dark:text-neutral-100 font-mono">{quota.limit} slug generations</strong>. 
+                Your free quota resets automatically at <strong className="text-neutral-900 dark:text-neutral-100 font-mono">00:00 UTC</strong>.
+              </p>
+
+              <div className="py-2.5 px-3 bg-neutral-50 dark:bg-neutral-950 rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs flex items-center justify-between font-mono">
+                <span className="text-neutral-500">Used Today:</span>
+                <span className="font-bold text-neutral-900 dark:text-neutral-100">{quota.count} / {quota.limit}</span>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsQuotaExhausted(false);
+                    upgradeToPlan('pro');
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all duration-150 cursor-pointer active:scale-[0.98]"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Upgrade to Pro — 1,000 / day ($5/mo)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsQuotaExhausted(false)}
+                  className="w-full py-2.5 px-4 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  Wait until midnight UTC reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

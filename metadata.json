@@ -1,6 +1,6 @@
 {
-  "name": "SlugGenerator – SEO Slug Generator",
-  "description": "Generate clean, readable, SEO-friendly URL slugs from any title or text. Customize, preview, and copy your URL slug instantly with this free online tool.",
+  "name": "Slugify Pro – Premium SEO Slug Generator",
+  "description": "Generate clean, SEO-friendly URL slugs from any title or text. Free tier with 20 daily generations, Pro bulk CSV processing, and Premium developer REST API.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

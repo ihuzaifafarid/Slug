@@ -1,0 +1,298 @@
+{
+  "users": [
+    {
+      "id": "usr_admin_b5c95ea1ccfb",
+      "email": "huzaifaahmedary@gmail.com",
+      "passwordHash": "$2b$10$c6ubkd54ri/MsK8NeZfJx.q3MUNQ7DhqSfOo2hL0LFJIeZo7HIV8S",
+      "name": "Administrator",
+      "role": "admin",
+      "emailVerified": true,
+      "createdAt": "2026-10-23T13:15:43.911Z",
+      "updatedAt": "2026-10-23T13:15:43.912Z"
+    },
+    {
+      "email": "checkout_test_1792763557336@example.com",
+      "passwordHash": "$2b$10$VCZwYmATooARPsHwIJIFWukj2W/h4lxOsl8l82eJ39OX4cNsIRMW.",
+      "name": "Tester",
+      "role": "user",
+      "emailVerified": true,
+      "verificationToken": "1d9861648d32cedb3ba79ff1820a1182a4af07b6",
+      "id": "usr_1065515f302222c2",
+      "createdAt": "2026-10-23T13:52:37.836Z",
+      "updatedAt": "2026-10-23T13:52:37.836Z"
+    },
+    {
+      "email": "checkout_test_1792763567459@example.com",
+      "passwordHash": "$2b$10$4L5ywyQb/uSVIb1H6ZIRoOLfpuSwVN/Xw6KKnRoaiHwnf21RyHwke",
+      "name": "Tester",
+      "role": "user",
+      "emailVerified": true,
+      "verificationToken": "796922666dd6bcb4790bec6889ec691b1447c57a",
+      "id": "usr_997cc0bd5f85f28a",
+      "createdAt": "2026-10-23T13:52:47.851Z",
+      "updatedAt": "2026-10-23T13:52:47.851Z"
+    },
+    {
+      "email": "webhook_test_1792763587138@example.com",
+      "passwordHash": "$2b$10$RVkxDXTtpDqFr4gTncvuw.Qd6jevGsiGi7VK85QtGy1jsJGmQpX5W",
+      "name": "Webhook Tester",
+      "role": "user",
+      "emailVerified": true,
+      "verificationToken": "d83139df10e0a8d1e3e28d4efe6881e01e1b97a1",
+      "id": "usr_7009aeb12f93cdae",
+      "createdAt": "2026-10-23T13:53:07.439Z",
+      "updatedAt": "2026-10-23T13:53:07.439Z"
+    },
+    {
+      "email": "wh_logic_1792763614543@example.com",
+      "passwordHash": "hash123",
+      "name": "Billing Logic Tester",
+      "role": "user",
+      "emailVerified": true,
+      "id": "usr_1561cd334ec33133",
+      "createdAt": "2026-10-23T13:53:34.546Z",
+      "updatedAt": "2026-10-23T13:53:34.546Z"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "sub_admin_00e76b32a028",
+      "userId": "usr_admin_b5c95ea1ccfb",
+      "plan": "premium",
+      "status": "active",
+      "provider": "manual",
+      "customerId": "admin_sys",
+      "subscriptionId": "sub_lifetime_admin",
+      "currentPeriodEnd": "2126-09-29T13:15:43.913Z",
+      "createdAt": "2026-10-23T13:15:43.913Z",
+      "updatedAt": "2026-10-23T13:15:43.913Z"
+    },
+    {
+      "id": "sub_1765dbc09535d1a3",
+      "userId": "usr_1065515f302222c2",
+      "plan": "pro",
+      "status": "active",
+      "provider": "manual",
+      "createdAt": "2026-10-23T13:52:37.836Z",
+      "updatedAt": "2026-10-23T13:52:37.889Z",
+      "currentPeriodEnd": "2026-11-22T13:52:37.888Z"
+    },
+    {
+      "id": "sub_705a9bc8070a8ed9",
+      "userId": "usr_997cc0bd5f85f28a",
+      "plan": "free",
+      "status": "active",
+      "provider": "manual",
+      "createdAt": "2026-10-23T13:52:47.851Z",
+      "updatedAt": "2026-10-23T13:52:47.851Z"
+    },
+    {
+      "id": "sub_6618343bb6b99b9d",
+      "userId": "usr_7009aeb12f93cdae",
+      "plan": "free",
+      "status": "active",
+      "provider": "manual",
+      "createdAt": "2026-10-23T13:53:07.439Z",
+      "updatedAt": "2026-10-23T13:53:07.439Z"
+    },
+    {
+      "id": "sub_c0335c906100f38f",
+      "userId": "usr_1561cd334ec33133",
+      "plan": "free",
+      "status": "active",
+      "provider": "lemon_squeezy",
+      "createdAt": "2026-10-23T13:53:34.546Z",
+      "updatedAt": "2026-10-23T13:53:34.556Z",
+      "customerId": "8888",
+      "subscriptionId": "sub_123456",
+      "currentPeriodEnd": "2026-11-22T13:53:34.549Z"
+    }
+  ],
+  "dailyUsage": [
+    {
+      "id": "use_4debbfaa04e7",
+      "identifier": "ip_127.0.0.1",
+      "dateUtc": "2026-10-23",
+      "count": 1,
+      "limit": 20,
+      "resetsAtUtc": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-23T13:16:05.793Z"
+    },
+    {
+      "id": "use_e321b085925c",
+      "identifier": "usr_admin_b5c95ea1ccfb",
+      "dateUtc": "2026-10-23",
+      "count": 1,
+      "limit": 10000,
+      "resetsAtUtc": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-23T13:16:05.951Z"
+    },
+    {
+      "id": "use_99bc85fa5669",
+      "identifier": "usr_1065515f302222c2",
+      "dateUtc": "2026-10-23",
+      "count": 0,
+      "limit": 1000,
+      "resetsAtUtc": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-23T13:52:37.844Z"
+    },
+    {
+      "id": "use_ba5c76e12983",
+      "identifier": "usr_997cc0bd5f85f28a",
+      "dateUtc": "2026-10-23",
+      "count": 0,
+      "limit": 20,
+      "resetsAtUtc": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-23T13:52:47.854Z"
+    },
+    {
+      "id": "use_719299fa2372",
+      "identifier": "usr_7009aeb12f93cdae",
+      "dateUtc": "2026-10-23",
+      "count": 0,
+      "limit": 20,
+      "resetsAtUtc": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-23T13:53:07.440Z"
+    }
+  ],
+  "slugHistory": [
+    {
+      "userId": "usr_admin_b5c95ea1ccfb",
+      "title": "Shopify E-Commerce Mastery Course",
+      "slug": "shopify-e-commerce-mastery-course",
+      "mode": "single",
+      "wordCount": 5,
+      "charCount": 33,
+      "options": {
+        "separator": "-",
+        "lowercase": true,
+        "removeSpecialChars": true
+      },
+      "id": "slg_7376027dab56cc9e",
+      "createdAt": "2026-10-23T13:16:05.951Z"
+    }
+  ],
+  "apiKeys": [
+    {
+      "id": "key_d65239cfd5eb",
+      "userId": "usr_admin_b5c95ea1ccfb",
+      "name": "Automated Test Key",
+      "keyPrefix": "sk_live_5125a...",
+      "keyHash": "ef1649151b996fe27e2e4851ca626ea7853ba6a47bb399da8f068855eaa3ae4b",
+      "rateLimitPerMin": 60,
+      "createdAt": "2026-10-23T13:16:05.944Z",
+      "status": "active",
+      "lastUsedAt": "2026-10-23T13:16:05.950Z"
+    }
+  ],
+  "analyticsEvents": [
+    {
+      "eventType": "slug_generated",
+      "path": "/generator",
+      "visitorId": "ip_127.0.0.1",
+      "meta": {
+        "count": 1,
+        "plan": "free",
+        "mode": "single"
+      },
+      "id": "evt_1a440c57b343",
+      "createdAt": "2026-10-23T13:16:05.795Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "adminUserId": "system_webhook",
+      "adminEmail": "webhook@lemonsqueezy.com",
+      "action": "SUBSCRIPTION_SUBSCRIPTION_CANCELLED_REVERT_FREE",
+      "targetType": "subscription",
+      "targetId": "sub_123456",
+      "details": {
+        "userId": "usr_1561cd334ec33133",
+        "formerPlan": "pro"
+      },
+      "id": "aud_f5b656283473",
+      "createdAt": "2026-10-23T13:53:34.556Z"
+    },
+    {
+      "adminUserId": "system_webhook",
+      "adminEmail": "webhook@lemonsqueezy.com",
+      "action": "SUBSCRIPTION_SUBSCRIPTION_CREATED_PRO",
+      "targetType": "subscription",
+      "targetId": "sub_123456",
+      "details": {
+        "userId": "usr_1561cd334ec33133",
+        "userEmail": "wh_logic_1792763614543@example.com",
+        "plan": "pro",
+        "customerId": "8888"
+      },
+      "id": "aud_8be36109479d",
+      "createdAt": "2026-10-23T13:53:34.554Z"
+    },
+    {
+      "adminUserId": "usr_1065515f302222c2",
+      "adminEmail": "checkout_test_1792763557336@example.com",
+      "action": "USER_TEST_UPGRADE_PRO",
+      "targetType": "subscription",
+      "targetId": "sub_1765dbc09535d1a3",
+      "details": {
+        "plan": "pro",
+        "userId": "usr_1065515f302222c2"
+      },
+      "id": "aud_3538228bf678",
+      "createdAt": "2026-10-23T13:52:37.890Z"
+    }
+  ],
+  "webhookEvents": [
+    {
+      "id": "wh_cc77d7dd9e4f",
+      "eventId": "evt_test_1792763614549",
+      "provider": "lemon_squeezy",
+      "eventName": "subscription_created",
+      "processedAt": "2026-10-23T13:53:34.555Z",
+      "payload": {
+        "meta": {
+          "event_name": "subscription_created",
+          "custom_data": {
+            "event_id": "evt_test_1792763614549",
+            "user_id": "usr_1561cd334ec33133",
+            "plan": "pro"
+          }
+        },
+        "data": {
+          "id": "sub_123456",
+          "type": "subscriptions",
+          "attributes": {
+            "customer_id": 8888,
+            "status": "active",
+            "user_email": "wh_logic_1792763614543@example.com",
+            "renews_at": "2026-11-22T13:53:34.549Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "wh_96a358dd5070",
+      "eventId": "evt_cancel_1792763614556",
+      "provider": "lemon_squeezy",
+      "eventName": "subscription_cancelled",
+      "processedAt": "2026-10-23T13:53:34.556Z",
+      "payload": {
+        "meta": {
+          "event_name": "subscription_cancelled",
+          "custom_data": {
+            "event_id": "evt_cancel_1792763614556",
+            "user_id": "usr_1561cd334ec33133",
+            "plan": "pro"
+          }
+        },
+        "data": {
+          "id": "sub_123456",
+          "attributes": {
+            "status": "cancelled",
+            "user_email": "wh_logic_1792763614543@example.com"
+          }
+        }
+      }
+    }
+  ]
+}
